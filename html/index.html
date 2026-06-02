@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Void Black Market</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="market-wrapper" style="display: none;">
+        <!-- Glowing Ambient Backdrops -->
+        <div class="ambient-glow color-purple"></div>
+        <div class="ambient-glow color-red"></div>
+
+        <div id="market-container" class="fade-in">
+            <!-- Left Sidebar Navigation -->
+            <aside class="sidebar">
+                <div class="brand">
+                    <div class="brand-logo">
+                        <i class="fa-solid fa-skull-crossbones logo-glow"></i>
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-name">VOID</span>
+                        <span class="brand-tag">BLACK MARKET</span>
+                    </div>
+                </div>
+                
+                <nav class="navigation-tabs">
+                    <button class="nav-tab active" data-tab="shop">
+                        <i class="fa-solid fa-store"></i>
+                        <span>Illegal Shop</span>
+                    </button>
+                    <button class="nav-tab" data-tab="crafting">
+                        <i class="fa-solid fa-hammer"></i>
+                        <span>Crafting Bench</span>
+                    </button>
+                    <button class="nav-tab" data-tab="wash">
+                        <i class="fa-solid fa-sack-dollar"></i>
+                        <span>Money Wash</span>
+                    </button>
+                    <button class="nav-tab hidden" id="mgmt-tab-btn" data-tab="management">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>Management</span>
+                    </button>
+                </nav>
+                
+                <div class="sidebar-footer">
+                    <span class="version-tag">v1.0.0</span>
+                    <span class="author-tag">by Fae_Alchemy</span>
+                </div>
+            </aside>
+
+            <!-- Main Panel Content -->
+            <main class="content-section">
+                <!-- Header -->
+                <header class="content-header">
+                    <div class="header-titles">
+                        <h1 id="market-title">Underground Market</h1>
+                        <p id="market-subtitle">Underground Smuggling Operations</p>
+                    </div>
+                    
+                    <div class="header-details">
+                        <div class="detail-card" id="detail-owner-job">
+                            <i class="fa-solid fa-users"></i>
+                            <div>
+                                <span class="card-label">Job Territory</span>
+                                <span class="card-value" id="owner-job-label">Lost MC</span>
+                            </div>
+                        </div>
+                        <div class="detail-card">
+                            <i class="fa-solid fa-wallet"></i>
+                            <div>
+                                <span class="card-label">Your Clean Cash</span>
+                                <span class="card-value font-green" id="player-cash">$0</span>
+                            </div>
+                        </div>
+                        <button id="close-btn" class="close-btn">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </header>
+
+                <div class="tab-content-container">
+                    <!-- Tab 1: Shop -->
+                    <div class="tab-pane active" id="pane-shop">
+                        <div class="tab-pane-header">
+                            <h2>Available Contraband</h2>
+                            <div class="search-container">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="shop-search" placeholder="Filter stock...">
+                            </div>
+                        </div>
+                        <div class="shop-grid" id="shop-items-container">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Crafting -->
+                    <div class="tab-pane" id="pane-crafting">
+                        <div class="tab-pane-header">
+                            <h2>Crafting Bench</h2>
+                            <p>Tinker equipment using local materials</p>
+                        </div>
+                        <div class="crafting-list" id="crafting-items-container">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Money Wash -->
+                    <div class="tab-pane" id="pane-wash">
+                        <div class="tab-pane-header">
+                            <h2>Money Laundering</h2>
+                            <p>Clean your marked bills or dirty accounts through this network</p>
+                        </div>
+                        <div class="wash-container">
+                            <div class="wash-stats-grid">
+                                <div class="wash-stat-card">
+                                    <span class="stat-label">Laundering Fee (Tax)</span>
+                                    <span class="stat-value text-glow-purple" id="wash-tax-display">10%</span>
+                                    <span class="stat-sub">Set by territory bosses</span>
+                                </div>
+                                <div class="wash-stat-card">
+                                    <span class="stat-label">Your Dirty Balance</span>
+                                    <span class="stat-value font-red" id="dirty-money-display">$0</span>
+                                    <span class="stat-sub" id="dirty-money-type">Marked Bills Stack</span>
+                                </div>
+                            </div>
+                            
+                            <div class="wash-input-section">
+                                <h3>Enter Amount to Clean</h3>
+                                <div class="wash-input-wrapper">
+                                    <span class="currency-symbol">$</span>
+                                    <input type="number" id="wash-input-amount" min="1" placeholder="Amount...">
+                                    <button class="max-btn" id="wash-max-btn">MAX</button>
+                                </div>
+                                <div class="wash-receipt" id="wash-receipt-card" style="display: none;">
+                                    <div class="receipt-row">
+                                        <span>Cleaning Amount</span>
+                                        <span id="receipt-amount">$0</span>
+                                    </div>
+                                    <div class="receipt-row">
+                                        <span>Territory Fee (<span id="receipt-tax-percent">10</span>%)</span>
+                                        <span class="font-red" id="receipt-fee">-$0</span>
+                                    </div>
+                                    <hr class="receipt-divider">
+                                    <div class="receipt-row receipt-total">
+                                        <span>Clean Payout</span>
+                                        <span class="font-green" id="receipt-payout">$0</span>
+                                    </div>
+                                </div>
+                                <button class="action-btn-primary disabled" id="wash-submit-btn" disabled>
+                                    <span>CLEAN MONEY</span>
+                                    <i class="fa-solid fa-soap"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: Management (Bosses only) -->
+                    <div class="tab-pane" id="pane-management">
+                        <div class="tab-pane-header">
+                            <h2>Territory Operations</h2>
+                            <p>Manage stock, prices, tax rate, and withdraw clean cash balance</p>
+                        </div>
+                        
+                        <div class="mgmt-grid">
+                            <!-- Left: General operations -->
+                            <div class="mgmt-card operations-card">
+                                <h3>Safe Box & Settings</h3>
+                                
+                                <div class="mgmt-stat-row">
+                                    <div class="mgmt-stat">
+                                        <span class="stat-label">Withdrawable Balance</span>
+                                        <span class="stat-value font-green" id="mgmt-balance">$0</span>
+                                    </div>
+                                    <button class="mgmt-btn" id="mgmt-withdraw-btn">Withdraw Safe</button>
+                                </div>
+
+                                <div class="setting-group">
+                                    <div class="setting-info">
+                                        <label for="mgmt-tax-slider">Money Laundering Tax Rate</label>
+                                        <span id="mgmt-tax-val">10%</span>
+                                    </div>
+                                    <input type="range" id="mgmt-tax-slider" min="5" max="30" value="10">
+                                    <p class="setting-desc">Taxes collected go directly into the safe box. Allowed range: 5% - 30%.</p>
+                                </div>
+
+                                <div class="setting-group checkbox-group">
+                                    <div class="checkbox-wrapper">
+                                        <input type="checkbox" id="mgmt-offline-toggle">
+                                        <label for="mgmt-offline-toggle">Enable Offline Access</label>
+                                    </div>
+                                    <p class="setting-desc">Allows citizens to purchase items from stock when all job members are offline.</p>
+                                </div>
+
+                                <button class="action-btn-primary" id="mgmt-save-settings">
+                                    <span>APPLY SETTINGS</span>
+                                    <i class="fa-solid fa-circle-check"></i>
+                                </button>
+                            </div>
+
+                            <!-- Right: Stock Management -->
+                            <div class="mgmt-card stock-card">
+                                <div class="stock-header">
+                                    <h3>Manage Shop Stock</h3>
+                                    <button class="mgmt-btn btn-small" id="stock-deposit-btn">+ Stock Item</button>
+                                </div>
+                                
+                                <div class="stock-list-container">
+                                    <table class="stock-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Item Name</th>
+                                                <th>Stock</th>
+                                                <th>Unit Price</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="mgmt-stock-list">
+                                            <!-- Injected by JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Stock Deposit Modal dialog -->
+    <div id="stock-modal" class="modal-wrapper" style="display: none;">
+        <div class="modal-content fade-in">
+            <div class="modal-header">
+                <h2>Deposit Item to Stock</h2>
+                <button class="modal-close-btn" id="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="modal-item-name">Select Item from Inventory</label>
+                    <select id="modal-item-name" required></select>
+                    <span class="input-verify" id="modal-item-verify"></span>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="modal-item-qty">Quantity to Deposit</label>
+                        <input type="number" id="modal-item-qty" min="1" value="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-item-price">Selling Unit Price ($)</label>
+                        <input type="number" id="modal-item-price" min="1" value="100" required>
+                    </div>
+                </div>
+                <button class="modal-submit-btn" id="modal-submit">CONFIRM DEPOSIT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Creator Dialog Wrapper -->
+    <div id="creator-wrapper" style="display: none;">
+        <!-- Glowing Ambient Backdrops -->
+        <div class="ambient-glow color-purple"></div>
+        <div class="ambient-glow color-red"></div>
+
+        <div id="creator-container" class="fade-in">
+            <header class="modal-header">
+                <h2><i class="fa-solid fa-folder-plus logo-glow"></i> CREATE BLACK MARKET</h2>
+                <button class="close-btn" id="creator-close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </header>
+            
+            <div class="modal-body creator-body">
+                <div class="form-group">
+                    <label for="creator-name">Internal ID Name <span class="font-red">*</span></label>
+                    <input type="text" id="creator-name" placeholder="e.g. lost_mc_market" required>
+                </div>
+                <div class="form-group">
+                    <label for="creator-label">Display Label Title <span class="font-red">*</span></label>
+                    <input type="text" id="creator-label" placeholder="e.g. Lost MC Hideout" required>
+                </div>
+                <div class="form-group">
+                    <label for="creator-job">Owner Job Name <span class="font-red">*</span></label>
+                    <input type="text" id="creator-job" placeholder="e.g. lostmc" required>
+                </div>
+                <div class="form-group">
+                    <label for="creator-ped">NPC Model Hash/Name <span class="font-red">*</span></label>
+                    <input type="text" id="creator-ped" value="g_m_m_mexboss_01" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="creator-blip-sprite">Blip Sprite ID (0 to disable)</label>
+                        <input type="number" id="creator-blip-sprite" value="501">
+                    </div>
+                    <div class="form-group">
+                        <label for="creator-blip-color">Blip Color ID</label>
+                        <input type="number" id="creator-blip-color" value="1">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="creator-blip-scale">Blip Scale</label>
+                        <input type="number" id="creator-blip-scale" step="0.1" value="0.8">
+                    </div>
+                </div>
+                <button class="action-btn-primary" id="creator-submit-btn">
+                    <span>CONFIRM CREATION</span>
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Element -->
+    <div id="toast" class="toast-hidden">
+        <i class="toast-icon fa-solid"></i>
+        <div class="toast-text-content">
+            <span class="toast-title">Notification</span>
+            <span class="toast-body">Message contents...</span>
+        </div>
+    </div>
+
+    <!-- Main JS Application script -->
+    <script src="script.js"></script>
+</body>
+</html>
