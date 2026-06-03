@@ -526,26 +526,68 @@ mgmtSaveSettings.addEventListener("click", () => {
     });
 });
 
-mgmtWithdrawBtn.addEventListener("click", () => {
-    const withdrawAmount = prompt("Enter clean cash amount to withdraw from safe:", currentMarketData.balance);
-    if (!withdrawAmount) return;
-    
-    const amountVal = parseInt(withdrawAmount) || 0;
-    if (amountVal <= 0) return;
-    
-    fetch(`https://${GetParentResourceName()}/withdrawFunds`, {
-        method: "POST",
-        body: JSON.stringify({
-            marketId: activeMarketId,
-            amount: amountVal
-        })
-    }).then(res => res.json()).then(response => {
-        if (response.success) {
-            showToast(`Withdrew $${amountVal.toLocaleString()} from safe box.`, "success");
-        } else {
-            showToast(response.message || "Failed to withdraw funds.", "error");
+let numberModalCallback = null;
+
+function openNumberModal(title, label, defaultValue, maxVal, callback) {
+    document.getElementById("number-modal-title").innerText = title;
+    document.getElementById("number-modal-label").innerText = label;
+    const input = document.getElementById("number-modal-input");
+    input.value = defaultValue;
+    if (maxVal !== null) {
+        input.max = maxVal;
+    } else {
+        input.removeAttribute("max");
+    }
+    numberModalCallback = callback;
+    document.getElementById("number-modal").style.display = "flex";
+}
+
+document.getElementById("number-modal-close").addEventListener("click", () => {
+    document.getElementById("number-modal").style.display = "none";
+});
+
+document.getElementById("number-modal-submit").addEventListener("click", () => {
+    const val = parseInt(document.getElementById("number-modal-input").value) || 0;
+    if (val <= 0) {
+        showToast("Invalid value entered.", "error");
+        return;
+    }
+    const maxValStr = document.getElementById("number-modal-input").getAttribute("max");
+    if (maxValStr) {
+        const maxVal = parseInt(maxValStr);
+        if (val > maxVal) {
+            showToast(`Value cannot exceed ${maxVal.toLocaleString()}`, "error");
+            return;
         }
-    });
+    }
+    if (numberModalCallback) {
+        numberModalCallback(val);
+    }
+    document.getElementById("number-modal").style.display = "none";
+});
+
+mgmtWithdrawBtn.addEventListener("click", () => {
+    openNumberModal(
+        "Withdraw Funds",
+        `Enter clean cash amount to withdraw (Available: $${currentMarketData.balance.toLocaleString()}):`,
+        currentMarketData.balance,
+        currentMarketData.balance,
+        (amountVal) => {
+            fetch(`https://${GetParentResourceName()}/withdrawFunds`, {
+                method: "POST",
+                body: JSON.stringify({
+                    marketId: activeMarketId,
+                    amount: amountVal
+                })
+            }).then(res => res.json()).then(response => {
+                if (response.success) {
+                    showToast(`Withdrew $${amountVal.toLocaleString()} from safe box.`, "success");
+                } else {
+                    showToast(response.message || "Failed to withdraw funds.", "error");
+                }
+            });
+        }
+    );
 });
 
 // RENDER STOCK MANAGEMENT TABLE
@@ -580,47 +622,53 @@ function renderStockTable() {
         
         // Actions mapping
         row.querySelector(".btn-price").addEventListener("click", () => {
-            const editPrice = prompt(`Enter new unit selling price for ${item.label}:`, item.price);
-            if (!editPrice) return;
-            const priceVal = parseInt(editPrice) || 0;
-            if (priceVal <= 0) return;
-            
-            fetch(`https://${GetParentResourceName()}/updateStockPrice`, {
-                method: "POST",
-                body: JSON.stringify({
-                    marketId: activeMarketId,
-                    itemName: item.name,
-                    price: priceVal
-                })
-            }).then(res => res.json()).then(response => {
-                if (response.success) {
-                    showToast("Price updated successfully!", "success");
-                } else {
-                    showToast(response.message || "Failed to update price.", "error");
+            openNumberModal(
+                "Update Price",
+                `Enter new unit selling price ($) for ${item.label}:`,
+                item.price,
+                null,
+                (priceVal) => {
+                    fetch(`https://${GetParentResourceName()}/updateStockPrice`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            marketId: activeMarketId,
+                            itemName: item.name,
+                            price: priceVal
+                        })
+                    }).then(res => res.json()).then(response => {
+                        if (response.success) {
+                            showToast("Price updated successfully!", "success");
+                        } else {
+                            showToast(response.message || "Failed to update price.", "error");
+                        }
+                    });
                 }
-            });
+            );
         });
         
         row.querySelector(".btn-withdraw").addEventListener("click", () => {
-            const withdrawQty = prompt(`Enter quantity of ${item.label} to withdraw back to inventory:`, item.stock);
-            if (!withdrawQty) return;
-            const qtyVal = parseInt(withdrawQty) || 0;
-            if (qtyVal <= 0) return;
-            
-            fetch(`https://${GetParentResourceName()}/withdrawStock`, {
-                method: "POST",
-                body: JSON.stringify({
-                    marketId: activeMarketId,
-                    itemName: item.name,
-                    quantity: qtyVal
-                })
-            }).then(res => res.json()).then(response => {
-                if (response.success) {
-                    showToast("Stock retrieved back to pockets.", "success");
-                } else {
-                    showToast(response.message || "Failed to retrieve stock.", "error");
+            openNumberModal(
+                "Retrieve Stock",
+                `Enter quantity of ${item.label} to withdraw back to inventory (Available: ${item.stock}):`,
+                item.stock,
+                item.stock,
+                (qtyVal) => {
+                    fetch(`https://${GetParentResourceName()}/withdrawStock`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            marketId: activeMarketId,
+                            itemName: item.name,
+                            quantity: qtyVal
+                        })
+                    }).then(res => res.json()).then(response => {
+                        if (response.success) {
+                            showToast("Stock retrieved back to pockets.", "success");
+                        } else {
+                            showToast(response.message || "Failed to retrieve stock.", "error");
+                        }
+                    });
                 }
-            });
+            );
         });
         
         mgmtStockList.appendChild(row);
