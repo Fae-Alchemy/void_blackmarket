@@ -752,3 +752,40 @@ end)
 lib.callback.register('void_blackmarket:server:GetPlayerInventory', function(source)
     return Inventory.GetPlayerInventory(source)
 end)
+
+-- Version Check Functionality
+local function CheckForUpdates()
+    local currentVersion = GetResourceMetadata(GetCurrentResourceName(), 'version', 0)
+    if not currentVersion then return end
+
+    PerformHttpRequest('https://raw.githubusercontent.com/Fae-Alchemy/void_blackmarket/main/fxmanifest.lua', function(statusCode, responseText, headers)
+        if statusCode ~= 200 then
+            print(("^5[void_blackmarket]^7 ^3[Update Checker]^7 ^1Failed to check for updates (Status Code: %s)^7"):format(tostring(statusCode)))
+            return
+        end
+
+        local latestVersion = responseText:match("version%s+'([%d%.]+)'") or responseText:match('version%s+"([%d%.]+)"')
+        if latestVersion then
+            if latestVersion ~= currentVersion then
+                print("^5--------------------------------------------------------------------------------^7")
+                print(("^5[void_blackmarket]^7 ^3[Update Checker]^7 ^1A new update is available!^7"):format(latestVersion))
+                print(("^5[void_blackmarket]^7 Current Version: ^1%s^7 | Latest Version: ^2%s^7"):format(currentVersion, latestVersion))
+                print("^5[void_blackmarket]^7 Please update to ensure compatibility and access new features.")
+                print("^5[void_blackmarket]^7 Download: ^5https://github.com/Fae-Alchemy/void_blackmarket^7")
+                print("^5--------------------------------------------------------------------------------^7")
+            else
+                if Config.Debug then
+                    print(("^5[void_blackmarket]^7 ^3[Update Checker]^7 ^2Resource is up to date (v%s)^7"):format(currentVersion))
+                end
+            end
+        else
+            print("^5[void_blackmarket]^7 ^3[Update Checker]^7 ^1Failed to parse version from remote manifest.^7")
+        end
+    end, 'GET')
+end
+
+-- Trigger update check on startup
+CreateThread(function()
+    Wait(5000) -- Wait 5 seconds after server boot
+    CheckForUpdates()
+end)
