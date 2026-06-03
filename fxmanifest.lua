@@ -1,7 +1,7 @@
 fx_version 'cerulean'
 games { 'gta5' }
 
-author 'Antigravity'
+author 'Fae_Alchemy'
 description 'Job-Owned Black Market with Custom Crafting, Money Wash, and Stock/Offline Access Management.'
 version '1.0.0'
 
