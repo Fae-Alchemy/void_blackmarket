@@ -3,6 +3,28 @@ let currentMarketData = null;
 let currentTab = "shop";
 let itemVerifyTimeout = null;
 
+// NUI Helper to perform POST requests with application/json headers
+function postNUI(endpoint, data = {}) {
+    return fetch(`https://${GetParentResourceName()}/${endpoint}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json; charset=UTF-8"
+        },
+        body: JSON.stringify(data)
+    }).then(res => {
+        return res.text().then(text => {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                return text;
+            }
+        });
+    }).catch(err => {
+        console.error(`postNUI error on endpoint ${endpoint}:`, err);
+        return { success: false, message: "Communication error." };
+    });
+}
+
 // DOM Elements
 const wrapper = document.getElementById("market-wrapper");
 const container = document.getElementById("market-container");
@@ -139,19 +161,13 @@ closeBtn.addEventListener("click", closeUI);
 function closeUI() {
     wrapper.style.display = "none";
     creatorWrapper.style.display = "none";
-    fetch(`https://${GetParentResourceName()}/closeUI`, {
-        method: "POST",
-        body: JSON.stringify({})
-    });
+    postNUI("closeUI");
 }
 
 // Creator event handlers
 creatorCloseBtn.addEventListener("click", () => {
     creatorWrapper.style.display = "none";
-    fetch(`https://${GetParentResourceName()}/closeUI`, {
-        method: "POST",
-        body: JSON.stringify({})
-    });
+    postNUI("closeUI");
 });
 
 creatorSubmitBtn.addEventListener("click", () => {
@@ -170,18 +186,15 @@ creatorSubmitBtn.addEventListener("click", () => {
     
     creatorWrapper.style.display = "none";
     
-    fetch(`https://${GetParentResourceName()}/submitCreateMarket`, {
-        method: "POST",
-        body: JSON.stringify({
-            name: name,
-            label: label,
-            ownerJob: ownerJob,
-            pedModel: pedModel,
-            blipSprite: blipSprite,
-            blipColor: blipColor,
-            blipScale: blipScale
-        })
-    }).then(res => res.json()).then(() => {
+    postNUI("submitCreateMarket", {
+        name: name,
+        label: label,
+        ownerJob: ownerJob,
+        pedModel: pedModel,
+        blipSprite: blipSprite,
+        blipColor: blipColor,
+        blipScale: blipScale
+    }).then(() => {
         // Callback completed
     });
 });
@@ -336,14 +349,11 @@ function renderShop() {
 shopSearch.addEventListener("input", renderShop);
 
 function purchaseItem(itemName, qty) {
-    fetch(`https://${GetParentResourceName()}/purchaseItem`, {
-        method: "POST",
-        body: JSON.stringify({
-            marketId: activeMarketId,
-            itemName: itemName,
-            quantity: qty
-        })
-    }).then(res => res.json()).then(response => {
+    postNUI("purchaseItem", {
+        marketId: activeMarketId,
+        itemName: itemName,
+        quantity: qty
+    }).then(response => {
         if (response.success) {
             showToast("Purchase successful!", "success");
         } else {
@@ -418,15 +428,12 @@ function craftItem(itemName, label, duration) {
     // Hide UI wrapper before triggering progress bar
     wrapper.style.display = "none";
     
-    fetch(`https://${GetParentResourceName()}/craftItem`, {
-        method: "POST",
-        body: JSON.stringify({
-            marketId: activeMarketId,
-            itemName: itemName,
-            label: label,
-            duration: duration
-        })
-    }).then(res => res.json()).then(response => {
+    postNUI("craftItem", {
+        marketId: activeMarketId,
+        itemName: itemName,
+        label: label,
+        duration: duration
+    }).then(response => {
         if (response.success) {
             showToast("Item crafted successfully!", "success");
         } else {
@@ -480,13 +487,10 @@ washSubmitBtn.addEventListener("click", () => {
     
     wrapper.style.display = "none";
     
-    fetch(`https://${GetParentResourceName()}/washMoney`, {
-        method: "POST",
-        body: JSON.stringify({
-            marketId: activeMarketId,
-            amount: val
-        })
-    }).then(res => res.json()).then(response => {
+    postNUI("washMoney", {
+        marketId: activeMarketId,
+        amount: val
+    }).then(response => {
         if (response.success) {
             showToast("Money cleaned successfully!", "success");
         } else {
@@ -510,14 +514,11 @@ mgmtTaxSlider.addEventListener("input", () => {
 });
 
 mgmtSaveSettings.addEventListener("click", () => {
-    fetch(`https://${GetParentResourceName()}/updateSettings`, {
-        method: "POST",
-        body: JSON.stringify({
-            marketId: activeMarketId,
-            taxRate: parseInt(mgmtTaxSlider.value),
-            offlineAccess: mgmtOfflineToggle.checked
-        })
-    }).then(res => res.json()).then(response => {
+    postNUI("updateSettings", {
+        marketId: activeMarketId,
+        taxRate: parseInt(mgmtTaxSlider.value),
+        offlineAccess: mgmtOfflineToggle.checked
+    }).then(response => {
         if (response.success) {
             showToast("Territory settings saved!", "success");
         } else {
@@ -573,13 +574,10 @@ mgmtWithdrawBtn.addEventListener("click", () => {
         currentMarketData.balance,
         currentMarketData.balance,
         (amountVal) => {
-            fetch(`https://${GetParentResourceName()}/withdrawFunds`, {
-                method: "POST",
-                body: JSON.stringify({
-                    marketId: activeMarketId,
-                    amount: amountVal
-                })
-            }).then(res => res.json()).then(response => {
+            postNUI("withdrawFunds", {
+                marketId: activeMarketId,
+                amount: amountVal
+            }).then(response => {
                 if (response.success) {
                     showToast(`Withdrew $${amountVal.toLocaleString()} from safe box.`, "success");
                 } else {
@@ -628,14 +626,11 @@ function renderStockTable() {
                 item.price,
                 null,
                 (priceVal) => {
-                    fetch(`https://${GetParentResourceName()}/updateStockPrice`, {
-                        method: "POST",
-                        body: JSON.stringify({
-                            marketId: activeMarketId,
-                            itemName: item.name,
-                            price: priceVal
-                        })
-                    }).then(res => res.json()).then(response => {
+                    postNUI("updateStockPrice", {
+                        marketId: activeMarketId,
+                        itemName: item.name,
+                        price: priceVal
+                    }).then(response => {
                         if (response.success) {
                             showToast("Price updated successfully!", "success");
                         } else {
@@ -653,14 +648,11 @@ function renderStockTable() {
                 item.stock,
                 item.stock,
                 (qtyVal) => {
-                    fetch(`https://${GetParentResourceName()}/withdrawStock`, {
-                        method: "POST",
-                        body: JSON.stringify({
-                            marketId: activeMarketId,
-                            itemName: item.name,
-                            quantity: qtyVal
-                        })
-                    }).then(res => res.json()).then(response => {
+                    postNUI("withdrawStock", {
+                        marketId: activeMarketId,
+                        itemName: item.name,
+                        quantity: qtyVal
+                    }).then(response => {
                         if (response.success) {
                             showToast("Stock retrieved back to pockets.", "success");
                         } else {
@@ -686,10 +678,7 @@ stockDepositBtn.addEventListener("click", () => {
     modalItemPrice.value = "100";
     
     // Fetch pocket inventory items
-    fetch(`https://${GetParentResourceName()}/getPlayerInventory`, {
-        method: "POST",
-        body: JSON.stringify({})
-    }).then(res => res.json()).then(invList => {
+    postNUI("getPlayerInventory").then(invList => {
         modalItemName.innerHTML = "";
         
         if (!invList || invList.length === 0) {
@@ -754,15 +743,12 @@ modalSubmit.addEventListener("click", () => {
         return;
     }
     
-    fetch(`https://${GetParentResourceName()}/depositStock`, {
-        method: "POST",
-        body: JSON.stringify({
-            marketId: activeMarketId,
-            itemName: itemName,
-            quantity: qty,
-            price: price
-        })
-    }).then(res => res.json()).then(response => {
+    postNUI("depositStock", {
+        marketId: activeMarketId,
+        itemName: itemName,
+        quantity: qty,
+        price: price
+    }).then(response => {
         if (response.success) {
             showToast("Item successfully stocked!", "success");
             stockModal.style.display = "none";
