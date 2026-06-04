@@ -206,6 +206,7 @@ end)
 
 RegisterNetEvent('void_blackmarket:client:SyncSingleMarket', function(marketId, marketData)
     SyncMarkets[tostring(marketId)] = marketData
+    RefreshBlips()
     if currentOpenMarketId == marketId then
         -- Refresh open NUI data dynamically
         lib.callback('void_blackmarket:server:GetMarketUIData', false, function(data)

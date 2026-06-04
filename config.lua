@@ -24,6 +24,12 @@ Config.WashingTime = 5000 -- Time in ms to wash money (progress bar)
 -- UI Web Path for Item Images (Loads straight from active inventory to avoid duplicate assets)
 Config.ItemImagePath = "nui://ox_inventory/web/images/"
 
+-- Gang System integration (specifically for cb-gangsystem turf ownership check)
+Config.GangSystem = {
+    enabled = false, -- Set to true to automatically link black market ownership to controlled turfs
+    resourceName = "cb-gangsystem" -- Name of the cb-gangsystem resource folder
+}
+
 -- Crafting Recipes
 -- Configure crafting times and required items
 Config.CraftingRecipes = {

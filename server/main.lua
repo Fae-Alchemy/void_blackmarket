@@ -7,6 +7,66 @@ local function IsPlayerAdmin(source)
     return Bridge.HasPermission(source, "admin") or Bridge.HasPermission(source, "god")
 end
 
+-- Helper to dynamically get the owner of a black market (integrating with cb-gangsystem)
+local function GetMarketOwnerJob(market)
+    if not market then return nil end
+    if Config.GangSystem and Config.GangSystem.enabled then
+        local resourceName = Config.GangSystem.resourceName or "cb-gangsystem"
+        if GetResourceState(resourceName) == "started" then
+            local coords = market.coords
+            local zoneID = exports[resourceName]:GetGangZoneByCoords(coords.xyz or coords)
+            if zoneID then
+                local controller = exports[resourceName]:GetZoneController(zoneID)
+                if controller and type(controller) == "string" and controller ~= "" and controller ~= "neutral" and controller ~= "none" then
+                    return string.lower(controller)
+                end
+            end
+        end
+    end
+    return market.owner_job
+end
+
+-- Helper to get a copy of LoadedBlackMarkets with owner jobs resolved dynamically
+local function GetSyncedMarkets()
+    local synced = {}
+    for id, market in pairs(LoadedBlackMarkets) do
+        synced[id] = {
+            id = market.id,
+            name = market.name,
+            label = market.label,
+            coords = market.coords,
+            ped = market.ped,
+            blip = market.blip,
+            balance = market.balance,
+            tax_rate = market.tax_rate,
+            items = market.items,
+            offline_access = market.offline_access,
+            owner_job = GetMarketOwnerJob(market)
+        }
+    end
+    return synced
+end
+
+-- Helper to get a synced copy of a single market
+local function GetSyncedSingleMarket(marketId)
+    local market = LoadedBlackMarkets[tostring(marketId)]
+    if not market then return nil end
+    return {
+        id = market.id,
+        name = market.name,
+        label = market.label,
+        coords = market.coords,
+        ped = market.ped,
+        blip = market.blip,
+        balance = market.balance,
+        tax_rate = market.tax_rate,
+        items = market.items,
+        offline_access = market.offline_access,
+        owner_job = GetMarketOwnerJob(market)
+    }
+end
+
+
 -- Helper to check if player is a boss of a specific job
 local function IsPlayerBossOfJob(source, jobName)
     local player = Bridge.GetPlayer(source)
@@ -98,7 +158,7 @@ local function LoadBlackMarkets()
         end
         
         -- Sync black markets to all active clients
-        TriggerClientEvent('void_blackmarket:client:SyncMarkets', -1, LoadedBlackMarkets)
+        TriggerClientEvent('void_blackmarket:client:SyncMarkets', -1, GetSyncedMarkets())
     end)
 end
 
@@ -126,7 +186,7 @@ end)
 
 -- RPC to get black markets list for joining clients
 lib.callback.register('void_blackmarket:server:GetBlackMarkets', function(source)
-    return LoadedBlackMarkets
+    return GetSyncedMarkets()
 end)
 
 -- RPC to check admin permissions
@@ -143,8 +203,9 @@ lib.callback.register('void_blackmarket:server:GetMarketUIData', function(source
     if not player then return nil end
     
     local pData = player.GetData()
-    local isOwnerBoss = IsPlayerBossOfJob(source, market.owner_job)
-    local isOwnerMember = (pData.job and pData.job.name == market.owner_job) or (pData.gang and pData.gang.name == market.owner_job)
+    local ownerJob = GetMarketOwnerJob(market)
+    local isOwnerBoss = IsPlayerBossOfJob(source, ownerJob)
+    local isOwnerMember = (pData.job and pData.job.name == ownerJob) or (pData.gang and pData.gang.name == ownerJob)
     
     -- Gather current materials count for crafting list
     local craftingRecipes = {}
@@ -196,12 +257,12 @@ lib.callback.register('void_blackmarket:server:GetMarketUIData', function(source
     end
     
     -- Check if owner is online
-    local ownerOnline = IsJobMemberOnline(market.owner_job)
+    local ownerOnline = IsJobMemberOnline(ownerJob)
     
     return {
         marketId = market.id,
         label = market.label,
-        ownerJob = market.owner_job,
+        ownerJob = ownerJob,
         balance = market.balance,
         taxRate = market.tax_rate,
         offlineAccess = market.offline_access,
@@ -297,7 +358,8 @@ lib.callback.register('void_blackmarket:server:BuyItem', function(source, data)
     end
     
     -- Check if owner job is online or offline access is allowed
-    local isOwnerOnline = IsJobMemberOnline(market.owner_job)
+    local ownerJob = GetMarketOwnerJob(market)
+    local isOwnerOnline = IsJobMemberOnline(ownerJob)
     if not isOwnerOnline and not market.offline_access then
         return { success = false, message = "The store is currently closed as the owners are offline." }
     end
@@ -363,7 +425,7 @@ lib.callback.register('void_blackmarket:server:BuyItem', function(source, data)
         Bridge.Notify(src, ("Purchased %dx %s for $%d"):format(quantity, itemName, price), "success")
         
         -- Sync update to others
-        TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, market)
+        TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, GetSyncedSingleMarket(marketId))
         
         return { success = true, balance = market.balance, items = market.items }
     else
@@ -433,7 +495,7 @@ lib.callback.register('void_blackmarket:server:WashMoney', function(source, data
         Bridge.Notify(src, ("Washed $%d dirty money. Received $%d clean (Charged %d%% tax)."):format(amount, cleanPayout, taxPercent), "success")
         
         -- Sync update
-        TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, market)
+        TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, GetSyncedSingleMarket(marketId))
         
         return { success = true, balance = market.balance }
     else
@@ -454,7 +516,8 @@ lib.callback.register('void_blackmarket:server:CraftItem', function(source, data
     local player = Bridge.GetPlayer(src)
     if not player then return { success = false, message = "Player error" } end
     local pData = player.GetData()
-    local isMember = (pData.job and pData.job.name == market.owner_job) or (pData.gang and pData.gang.name == market.owner_job)
+    local ownerJob = GetMarketOwnerJob(market)
+    local isMember = (pData.job and pData.job.name == ownerJob) or (pData.gang and pData.gang.name == ownerJob)
     if not isMember then
         return { success = false, message = "Unauthorized: You are not a member of this territory organization." }
     end
@@ -512,7 +575,8 @@ lib.callback.register('void_blackmarket:server:UpdateSettings', function(source,
     if not market then return { success = false, message = "Market not found" } end
     
     -- Ownership check
-    if not IsPlayerBossOfJob(src, market.owner_job) then
+    local ownerJob = GetMarketOwnerJob(market)
+    if not IsPlayerBossOfJob(src, ownerJob) then
         return { success = false, message = "Unauthorized management action" }
     end
     
@@ -529,7 +593,7 @@ lib.callback.register('void_blackmarket:server:UpdateSettings', function(source,
     }, function(rowsChanged)
         if rowsChanged > 0 then
             Bridge.Notify(src, "Settings successfully updated!", "success")
-            TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, market)
+            TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, GetSyncedSingleMarket(marketId))
         end
     end)
     
@@ -548,7 +612,8 @@ lib.callback.register('void_blackmarket:server:WithdrawFunds', function(source, 
     if not market then return { success = false, message = "Market not found" } end
     
     -- Ownership check
-    if not IsPlayerBossOfJob(src, market.owner_job) then
+    local ownerJob = GetMarketOwnerJob(market)
+    if not IsPlayerBossOfJob(src, ownerJob) then
         return { success = false, message = "Unauthorized" }
     end
     
@@ -567,7 +632,7 @@ lib.callback.register('void_blackmarket:server:WithdrawFunds', function(source, 
     }, function()
         player.AddMoney('cash', amount, "blackmarket-withdraw")
         Bridge.Notify(src, ("Withdrew $%d from black market balance."):format(amount), "success")
-        TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, market)
+        TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, GetSyncedSingleMarket(marketId))
     end)
     
     return { success = true, balance = market.balance }
@@ -585,8 +650,9 @@ lib.callback.register('void_blackmarket:server:DepositStock', function(source, d
     if not market then return { success = false, message = "Market not found" } end
     
     -- Owner member check (any grade of the job can stock)
+    local ownerJob = GetMarketOwnerJob(market)
     local pData = Bridge.GetPlayer(src).GetData()
-    local isMember = (pData.job and pData.job.name == market.owner_job) or (pData.gang and pData.gang.name == market.owner_job)
+    local isMember = (pData.job and pData.job.name == ownerJob) or (pData.gang and pData.gang.name == ownerJob)
     if not isMember then
         return { success = false, message = "Unauthorized" }
     end
@@ -624,7 +690,7 @@ lib.callback.register('void_blackmarket:server:DepositStock', function(source, d
             tonumber(marketId)
         }, function()
             Bridge.Notify(src, ("Deposited %dx %s into market stock."):format(quantity, itemName), "success")
-            TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, market)
+            TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, GetSyncedSingleMarket(marketId))
         end)
         
         return { success = true, items = market.items }
@@ -644,8 +710,9 @@ lib.callback.register('void_blackmarket:server:WithdrawStock', function(source, 
     if not market then return { success = false, message = "Market not found" } end
     
     -- Owner member check
+    local ownerJob = GetMarketOwnerJob(market)
     local pData = Bridge.GetPlayer(src).GetData()
-    local isMember = (pData.job and pData.job.name == market.owner_job) or (pData.gang and pData.gang.name == market.owner_job)
+    local isMember = (pData.job and pData.job.name == ownerJob) or (pData.gang and pData.gang.name == ownerJob)
     if not isMember then
         return { success = false, message = "Unauthorized" }
     end
@@ -683,7 +750,7 @@ lib.callback.register('void_blackmarket:server:WithdrawStock', function(source, 
     }, function()
         Inventory.AddItem(src, itemName, quantity)
         Bridge.Notify(src, ("Withdrew %dx %s from stock."):format(quantity, itemName), "success")
-        TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, market)
+        TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, GetSyncedSingleMarket(marketId))
     end)
     
     return { success = true, items = market.items }
@@ -702,8 +769,9 @@ lib.callback.register('void_blackmarket:server:UpdateStockPrice', function(sourc
     if not market then return { success = false, message = "Market not found" } end
     
     -- Owner member check
+    local ownerJob = GetMarketOwnerJob(market)
     local pData = Bridge.GetPlayer(src).GetData()
-    local isMember = (pData.job and pData.job.name == market.owner_job) or (pData.gang and pData.gang.name == market.owner_job)
+    local isMember = (pData.job and pData.job.name == ownerJob) or (pData.gang and pData.gang.name == ownerJob)
     if not isMember then
         return { success = false, message = "Unauthorized" }
     end
@@ -724,7 +792,7 @@ lib.callback.register('void_blackmarket:server:UpdateStockPrice', function(sourc
             tonumber(marketId)
         }, function()
             Bridge.Notify(src, ("Updated %s price to $%d."):format(itemName, newPrice), "success")
-            TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, market)
+            TriggerClientEvent('void_blackmarket:client:SyncSingleMarket', -1, marketId, GetSyncedSingleMarket(marketId))
         end)
         return { success = true, items = market.items }
     else
@@ -789,3 +857,37 @@ CreateThread(function()
     Wait(5000) -- Wait 5 seconds after server boot
     CheckForUpdates()
 end)
+
+-- Background thread to monitor turf changes and sync to clients
+CreateThread(function()
+    -- Wait for database loading to populate LoadedBlackMarkets
+    while not next(LoadedBlackMarkets) do
+        Wait(1000)
+    end
+    
+    local lastOwners = {}
+    for id, market in pairs(LoadedBlackMarkets) do
+        lastOwners[id] = GetMarketOwnerJob(market)
+    end
+    
+    while true do
+        Wait(30000) -- Check every 30 seconds
+        if Config.GangSystem and Config.GangSystem.enabled then
+            local changed = false
+            for id, market in pairs(LoadedBlackMarkets) do
+                local currentOwner = GetMarketOwnerJob(market)
+                if lastOwners[id] ~= currentOwner then
+                    if Config.Debug then
+                        print(("[void_blackmarket] Market %s owner changed from %s to %s"):format(market.name, tostring(lastOwners[id]), tostring(currentOwner)))
+                    end
+                    lastOwners[id] = currentOwner
+                    changed = true
+                end
+            end
+            if changed then
+                TriggerClientEvent('void_blackmarket:client:SyncMarkets', -1, GetSyncedMarkets())
+            end
+        end
+    end
+end)
+
