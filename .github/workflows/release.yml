@@ -1,0 +1,34 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Release Structure
+        run: |
+          mkdir -p build/void_blackmarket
+          # Copy files while excluding build, git, and github directories
+          rsync -av --exclude="build" --exclude=".git" --exclude=".github" --exclude=".gitignore" ./ build/void_blackmarket/
+          cd build
+          zip -r ../void_blackmarket.zip void_blackmarket
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: void_blackmarket.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
