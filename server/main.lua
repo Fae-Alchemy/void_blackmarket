@@ -908,3 +908,40 @@ CreateThread(function()
     end
 end)
 
+CreateThread(function()
+    Wait(5000)
+    print("^3[void_blackmarket] DEBUG: Checking loaded markets zone ownership:^7")
+    local resourceName = Config.GangSystem.resourceName or "cb-gangsystem"
+    for id, market in pairs(LoadedBlackMarkets) do
+        local coords = market.coords
+        local okZone, zoneID = pcall(function()
+            return exports[resourceName]:GetGangZoneByCoords(coords.xyz or coords)
+        end)
+        
+        if not okZone then
+            print(("^1[void_blackmarket] Market %s: GetGangZoneByCoords crashed!^7"):format(market.name))
+        elseif not zoneID then
+            print(("^3[void_blackmarket] Market %s: Not in any gang zone (neutral/none)^7"):format(market.name))
+        else
+            local okController, controllerID = pcall(function()
+                return exports[resourceName]:GetGangAtZoneReturnID(zoneID)
+            end)
+            if not okController then
+                print(("^1[void_blackmarket] Market %s: GetGangAtZoneReturnID crashed for zone %s!^7"):format(market.name, zoneID))
+            elseif not controllerID then
+                print(("^3[void_blackmarket] Market %s: Zone %s has no controller gang^7"):format(market.name, zoneID))
+            else
+                local gangData = GlobalState["GangData"]
+                local gangTag = nil
+                if gangData then
+                    local gangInfo = gangData[tostring(controllerID)] or gangData[tonumber(controllerID)]
+                    if gangInfo then
+                        gangTag = gangInfo.tag
+                    end
+                end
+                print(("^2[void_blackmarket] Market %s: In zone %s owned by gang ID %s (tag: %s)^7"):format(market.name, zoneID, tostring(controllerID), tostring(gangTag)))
+            end
+        end
+    end
+end)
+
