@@ -26,7 +26,7 @@ Config.ItemImagePath = "nui://ox_inventory/web/images/"
 
 -- Gang System integration (specifically for cb-gangsystem turf ownership check)
 Config.GangSystem = {
-    enabled = false, -- Set to true to automatically link black market ownership to controlled turfs
+    enabled = true, -- Set to true to automatically link black market ownership to controlled turfs
     resourceName = "cb-gangsystem" -- Name of the cb-gangsystem resource folder
 }
 
