@@ -901,3 +901,9 @@ CreateThread(function()
     end
 end)
 
+CreateThread(function()
+    Wait(5000)
+    print("^3[void_blackmarket] DEBUG: GlobalState['GangData'] contents:^7")
+    print(json.encode(GlobalState["GangData"]))
+end)
+
