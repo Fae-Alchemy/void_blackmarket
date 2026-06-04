@@ -21,13 +21,20 @@ local function GetMarketOwnerJob(market)
             end)
             
             if okZone and zoneID then
-                -- Safe lookup for zone owner/controller
-                local okController, controller = pcall(function()
+                -- Safe lookup for zone owner/controller database ID
+                local okController, controllerID = pcall(function()
                     return exports[resourceName]:GetGangAtZoneReturnID(zoneID)
                 end)
                 
-                if okController and controller and type(controller) == "string" and controller ~= "" and controller ~= "neutral" and controller ~= "none" then
-                    return string.lower(controller)
+                if okController and controllerID then
+                    -- Map the numeric/string controller ID to the gang tag string using GlobalState
+                    local gangData = GlobalState["GangData"]
+                    if gangData then
+                        local gangInfo = gangData[tostring(controllerID)] or gangData[tonumber(controllerID)]
+                        if gangInfo and gangInfo.tag and gangInfo.tag ~= "" then
+                            return string.lower(gangInfo.tag)
+                        end
+                    end
                 end
             end
         end
@@ -899,11 +906,5 @@ CreateThread(function()
             end
         end
     end
-end)
-
-CreateThread(function()
-    Wait(5000)
-    print("^3[void_blackmarket] DEBUG: GlobalState['GangData'] contents:^7")
-    print(json.encode(GlobalState["GangData"]))
 end)
 
