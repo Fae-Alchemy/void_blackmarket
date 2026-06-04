@@ -14,10 +14,19 @@ local function GetMarketOwnerJob(market)
         local resourceName = Config.GangSystem.resourceName or "cb-gangsystem"
         if GetResourceState(resourceName) == "started" then
             local coords = market.coords
-            local zoneID = exports[resourceName]:GetGangZoneByCoords(coords.xyz or coords)
-            if zoneID then
-                local controller = exports[resourceName]:GetZoneController(zoneID)
-                if controller and type(controller) == "string" and controller ~= "" and controller ~= "neutral" and controller ~= "none" then
+            
+            -- Safe lookup for gang zone ID
+            local okZone, zoneID = pcall(function()
+                return exports[resourceName]:GetGangZoneByCoords(coords.xyz or coords)
+            end)
+            
+            if okZone and zoneID then
+                -- Safe lookup for zone owner/controller
+                local okController, controller = pcall(function()
+                    return exports[resourceName]:GetZoneController(zoneID)
+                end)
+                
+                if okController and controller and type(controller) == "string" and controller ~= "" and controller ~= "neutral" and controller ~= "none" then
                     return string.lower(controller)
                 end
             end
@@ -25,6 +34,7 @@ local function GetMarketOwnerJob(market)
     end
     return market.owner_job
 end
+
 
 -- Helper to get a copy of LoadedBlackMarkets with owner jobs resolved dynamically
 local function GetSyncedMarkets()
@@ -890,4 +900,45 @@ CreateThread(function()
         end
     end
 end)
+
+-- Diagnostics to check available cb-gangsystem exports
+CreateThread(function()
+    Wait(5000)
+    print("^3[void_blackmarket] Diagnostics starting... Checking cb-gangsystem exports^7")
+    local resource = "cb-gangsystem"
+    if GetResourceState(resource) == "started" then
+        local test_exports = {
+            "GetGangZoneByCoords",
+            "GetZoneController",
+            "GetGangZonePlayerIsIn",
+            "GetGangAtZoneReturnID",
+            "GetZoneOwner",
+            "GetTurfOwner",
+            "GetControllingGang",
+            "GetTurfController",
+            "GetGangZone"
+        }
+        for _, expName in ipairs(test_exports) do
+            local success, res = pcall(function()
+                return exports[resource][expName](vector3(0.0, 0.0, 0.0))
+            end)
+            if success then
+                print(("^2[void_blackmarket] Diagnostic: Export '%s' exists (returned: %s)^7"):format(expName, tostring(res)))
+            else
+                -- Try calling with a zone name string string for methods that might expect a zone ID
+                local success2, res2 = pcall(function()
+                    return exports[resource][expName]("ROCKF")
+                end)
+                if success2 then
+                    print(("^2[void_blackmarket] Diagnostic: Export '%s' exists when called with string (returned: %s)^7"):format(expName, tostring(res2)))
+                else
+                    print(("^1[void_blackmarket] Diagnostic: Export '%s' does not exist or failed^7"):format(expName))
+                end
+            end
+        end
+    else
+        print("^1[void_blackmarket] cb-gangsystem is NOT started!^7")
+    end
+end)
+
 
