@@ -57,12 +57,21 @@ local function GetPlayerGangTag()
     if Config.GangSystem and Config.GangSystem.enabled then
         local myServerId = GetPlayerServerId(PlayerId())
         local gangMembers = GlobalState["GangMembers"]
+        if Config.Debug then
+            print(("[void_blackmarket] GetPlayerGangTag: myServerId=%s, gangMembers exists=%s"):format(tostring(myServerId), tostring(gangMembers ~= nil)))
+        end
         if gangMembers then
             local memberInfo = gangMembers[myServerId] or gangMembers[tostring(myServerId)] or gangMembers[tonumber(myServerId)]
+            if Config.Debug then
+                print(("[void_blackmarket] GetPlayerGangTag: memberInfo exists=%s, gang_id=%s"):format(tostring(memberInfo ~= nil), tostring(memberInfo and memberInfo.gang_id)))
+            end
             if memberInfo and memberInfo.gang_id then
                 local gangData = GlobalState["GangData"]
                 if gangData then
                     local gangInfo = gangData[tostring(memberInfo.gang_id)] or gangData[tonumber(memberInfo.gang_id)]
+                    if Config.Debug then
+                        print(("[void_blackmarket] GetPlayerGangTag: gangInfo exists=%s, tag=%s"):format(tostring(gangInfo ~= nil), tostring(gangInfo and gangInfo.tag)))
+                    end
                     if gangInfo and gangInfo.tag and gangInfo.tag ~= "" then
                         return string.lower(gangInfo.tag)
                     end
@@ -82,11 +91,18 @@ local function IsPlayerOwner(market)
     local isJobOwner = pData.job and pData.job.name == market.owner_job
     local isGangOwner = pData.gang and pData.gang.name == market.owner_job
     
+    local myGangTag = GetPlayerGangTag()
     if not isGangOwner then
-        local myGangTag = GetPlayerGangTag()
         if myGangTag and myGangTag == string.lower(market.owner_job) then
             isGangOwner = true
         end
+    end
+    
+    if Config.Debug then
+        print(("[void_blackmarket] IsPlayerOwner for market %s (%s): isJobOwner=%s, isGangOwner=%s, playerJob=%s, playerGang=%s, resolvedGangTag=%s"):format(
+            tostring(market.name), tostring(market.owner_job), tostring(isJobOwner), tostring(isGangOwner),
+            tostring(pData.job and pData.job.name), tostring(pData.gang and pData.gang.name), tostring(myGangTag)
+        ))
     end
     
     return isJobOwner or isGangOwner
