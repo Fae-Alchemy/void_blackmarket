@@ -53,13 +53,41 @@ local function OpenBlackMarket(marketId)
     end, marketId)
 end
 
+local function GetPlayerGangTag()
+    if Config.GangSystem and Config.GangSystem.enabled then
+        local myServerId = GetPlayerServerId(PlayerId())
+        local gangMembers = GlobalState["GangMembers"]
+        if gangMembers then
+            local memberInfo = gangMembers[myServerId] or gangMembers[tostring(myServerId)] or gangMembers[tonumber(myServerId)]
+            if memberInfo and memberInfo.gang_id then
+                local gangData = GlobalState["GangData"]
+                if gangData then
+                    local gangInfo = gangData[tostring(memberInfo.gang_id)] or gangData[tonumber(memberInfo.gang_id)]
+                    if gangInfo and gangInfo.tag and gangInfo.tag ~= "" then
+                        return string.lower(gangInfo.tag)
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
 -- Helper to check if player is an owner (member of owner_job/gang)
 local function IsPlayerOwner(market)
+    if not market or not market.owner_job then return false end
     local pData = Bridge.GetPlayerData()
     if not pData then return false end
     
     local isJobOwner = pData.job and pData.job.name == market.owner_job
     local isGangOwner = pData.gang and pData.gang.name == market.owner_job
+    
+    if not isGangOwner then
+        local myGangTag = GetPlayerGangTag()
+        if myGangTag and myGangTag == string.lower(market.owner_job) then
+            isGangOwner = true
+        end
+    end
     
     return isJobOwner or isGangOwner
 end

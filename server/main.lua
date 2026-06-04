@@ -84,6 +84,67 @@ local function GetSyncedSingleMarket(marketId)
 end
 
 
+-- Helper to get player's gang tag from cb-gangsystem
+local function GetPlayerGangTag(source)
+    if Config.GangSystem and Config.GangSystem.enabled then
+        local resourceName = Config.GangSystem.resourceName or "cb-gangsystem"
+        if GetResourceState(resourceName) == "started" then
+            local okGang, playerGangID = pcall(function()
+                return exports[resourceName]:GetGangID(source)
+            end)
+            if okGang and playerGangID then
+                local gangData = GlobalState["GangData"]
+                if gangData then
+                    local gangInfo = gangData[tostring(playerGangID)] or gangData[tonumber(playerGangID)]
+                    if gangInfo and gangInfo.tag and gangInfo.tag ~= "" then
+                        return string.lower(gangInfo.tag)
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- Helper to get player's gang rank from cb-gangsystem
+local function GetPlayerGangRank(source)
+    local resourceName = Config.GangSystem.resourceName or "cb-gangsystem"
+    if GetResourceState(resourceName) == "started" then
+        local okMembers, members = pcall(function()
+            return exports[resourceName]:GetGangMembers()
+        end)
+        if okMembers and members then
+            local player = Bridge.GetPlayer(source)
+            if player then
+                local pData = player.GetData()
+                local citizenID = pData.citizenid
+                if citizenID and members[citizenID] then
+                    return members[citizenID].rank
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- Helper to check if a player is a member of a job/gang (supporting framework and cb-gangsystem)
+local function IsPlayerMemberOfJobOrGang(source, ownerJob)
+    local player = Bridge.GetPlayer(source)
+    if not player then return false end
+    
+    local pData = player.GetData()
+    local isMember = (pData.job and pData.job.name == ownerJob) or (pData.gang and pData.gang.name == ownerJob)
+    
+    if not isMember and Config.GangSystem and Config.GangSystem.enabled then
+        local myGangTag = GetPlayerGangTag(source)
+        if myGangTag and myGangTag == string.lower(ownerJob) then
+            isMember = true
+        end
+    end
+    
+    return isMember
+end
+
 -- Helper to check if player is a boss of a specific job
 local function IsPlayerBossOfJob(source, jobName)
     local player = Bridge.GetPlayer(source)
@@ -119,6 +180,17 @@ local function IsPlayerBossOfJob(source, jobName)
             return true
         end
     end
+
+    -- Check cb-gangsystem Gang Boss status
+    if Config.GangSystem and Config.GangSystem.enabled then
+        local myGangTag = GetPlayerGangTag(source)
+        if myGangTag and myGangTag == string.lower(jobName) then
+            local rank = GetPlayerGangRank(source)
+            if rank and rank >= (Config.MinBossGrade or 4) then
+                return true
+            end
+        end
+    end
     
     return false
 end
@@ -127,15 +199,9 @@ end
 local function IsJobMemberOnline(jobName)
     local players = Bridge.GetPlayers()
     for _, pSrc in ipairs(players) do
-        local player = Bridge.GetPlayer(tonumber(pSrc))
-        if player then
-            local pData = player.GetData()
-            if pData.job and pData.job.name == jobName then
-                return true
-            end
-            if pData.gang and pData.gang.name == jobName then
-                return true
-            end
+        local pSrcNum = tonumber(pSrc)
+        if IsPlayerMemberOfJobOrGang(pSrcNum, jobName) then
+            return true
         end
     end
     return false
@@ -222,7 +288,7 @@ lib.callback.register('void_blackmarket:server:GetMarketUIData', function(source
     local pData = player.GetData()
     local ownerJob = GetMarketOwnerJob(market)
     local isOwnerBoss = IsPlayerBossOfJob(source, ownerJob)
-    local isOwnerMember = (pData.job and pData.job.name == ownerJob) or (pData.gang and pData.gang.name == ownerJob)
+    local isOwnerMember = IsPlayerMemberOfJobOrGang(source, ownerJob)
     
     -- Gather current materials count for crafting list
     local craftingRecipes = {}
@@ -534,7 +600,7 @@ lib.callback.register('void_blackmarket:server:CraftItem', function(source, data
     if not player then return { success = false, message = "Player error" } end
     local pData = player.GetData()
     local ownerJob = GetMarketOwnerJob(market)
-    local isMember = (pData.job and pData.job.name == ownerJob) or (pData.gang and pData.gang.name == ownerJob)
+    local isMember = IsPlayerMemberOfJobOrGang(src, ownerJob)
     if not isMember then
         return { success = false, message = "Unauthorized: You are not a member of this territory organization." }
     end
@@ -669,7 +735,7 @@ lib.callback.register('void_blackmarket:server:DepositStock', function(source, d
     -- Owner member check (any grade of the job can stock)
     local ownerJob = GetMarketOwnerJob(market)
     local pData = Bridge.GetPlayer(src).GetData()
-    local isMember = (pData.job and pData.job.name == ownerJob) or (pData.gang and pData.gang.name == ownerJob)
+    local isMember = IsPlayerMemberOfJobOrGang(src, ownerJob)
     if not isMember then
         return { success = false, message = "Unauthorized" }
     end
@@ -729,7 +795,7 @@ lib.callback.register('void_blackmarket:server:WithdrawStock', function(source, 
     -- Owner member check
     local ownerJob = GetMarketOwnerJob(market)
     local pData = Bridge.GetPlayer(src).GetData()
-    local isMember = (pData.job and pData.job.name == ownerJob) or (pData.gang and pData.gang.name == ownerJob)
+    local isMember = IsPlayerMemberOfJobOrGang(src, ownerJob)
     if not isMember then
         return { success = false, message = "Unauthorized" }
     end
@@ -788,7 +854,7 @@ lib.callback.register('void_blackmarket:server:UpdateStockPrice', function(sourc
     -- Owner member check
     local ownerJob = GetMarketOwnerJob(market)
     local pData = Bridge.GetPlayer(src).GetData()
-    local isMember = (pData.job and pData.job.name == ownerJob) or (pData.gang and pData.gang.name == ownerJob)
+    local isMember = IsPlayerMemberOfJobOrGang(src, ownerJob)
     if not isMember then
         return { success = false, message = "Unauthorized" }
     end
@@ -908,40 +974,4 @@ CreateThread(function()
     end
 end)
 
-CreateThread(function()
-    Wait(5000)
-    print("^3[void_blackmarket] DEBUG: Checking loaded markets zone ownership:^7")
-    local resourceName = Config.GangSystem.resourceName or "cb-gangsystem"
-    for id, market in pairs(LoadedBlackMarkets) do
-        local coords = market.coords
-        local okZone, zoneID = pcall(function()
-            return exports[resourceName]:GetGangZoneByCoords(coords.xyz or coords)
-        end)
-        
-        if not okZone then
-            print(("^1[void_blackmarket] Market %s: GetGangZoneByCoords crashed!^7"):format(market.name))
-        elseif not zoneID then
-            print(("^3[void_blackmarket] Market %s: Not in any gang zone (neutral/none)^7"):format(market.name))
-        else
-            local okController, controllerID = pcall(function()
-                return exports[resourceName]:GetGangAtZoneReturnID(zoneID)
-            end)
-            if not okController then
-                print(("^1[void_blackmarket] Market %s: GetGangAtZoneReturnID crashed for zone %s!^7"):format(market.name, zoneID))
-            elseif not controllerID then
-                print(("^3[void_blackmarket] Market %s: Zone %s has no controller gang^7"):format(market.name, zoneID))
-            else
-                local gangData = GlobalState["GangData"]
-                local gangTag = nil
-                if gangData then
-                    local gangInfo = gangData[tostring(controllerID)] or gangData[tonumber(controllerID)]
-                    if gangInfo then
-                        gangTag = gangInfo.tag
-                    end
-                end
-                print(("^2[void_blackmarket] Market %s: In zone %s owned by gang ID %s (tag: %s)^7"):format(market.name, zoneID, tostring(controllerID), tostring(gangTag)))
-            end
-        end
-    end
-end)
 
