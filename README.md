@@ -31,6 +31,8 @@ A premium, player-owned black market resource for FiveM servers (supporting QBCo
 *   **Premium NUI Panels:** 
     *   High-fidelity borderless dark glass theme custom-tailored for maximum immersion.
     *   Custom administrative in-game dashboard for creating and placing markets.
+*   **Automated Version Checker:** 
+    *   Prints details to your server console on boot if your resource is outdated compared to the latest GitHub release.
 
 ---
 
@@ -45,7 +47,7 @@ A premium, player-owned black market resource for FiveM servers (supporting QBCo
 
 ## 💾 Installation
 
-1.  **Clone/Download:** Clone this repository into your server resources directory:
+1.  **Download Release:** Download the pre-packaged resource `void_blackmarket.zip` from the [GitHub Releases](https://github.com/Fae-Alchemy/void_blackmarket/releases) page and extract it (or clone the repository directly if preferred):
     ```bash
     git clone https://github.com/Fae-Alchemy/void_blackmarket.git
     ```
