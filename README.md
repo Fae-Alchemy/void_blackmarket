@@ -6,7 +6,9 @@ A premium, player-owned black market resource for FiveM servers (supporting QBCo
 
 ## 🌟 Features
 
-*   **Job & Gang Ownership:** Markets are tied to organizations (jobs or gangs like `lostmc`, `cartel`) instead of individual citizen IDs.
+*   **Job & Gang Ownership & Turf Integration:**
+    *   Markets are tied to organizations (jobs or gangs like `lostmc`, `cartel`) instead of individual citizen IDs.
+    *   **Dynamic Turf Control (v1.1.0+):** Optional integration with `cb-gangsystem`. When enabled, ownership dynamically swaps to whichever gang captures the turf zone containing the market. If neutral or disabled, it falls back to the database-configured owner job.
 *   **Illegal Shop:** 
     *   Stocked and priced directly by territory members.
     *   Dropdown inventory selector in the UI for easy stocking (automatically fetches and shows pocket items with helper quantities).
@@ -49,7 +51,14 @@ A premium, player-owned black market resource for FiveM servers (supporting QBCo
     ```
 2.  **Database Setup:** Import the SQL schema from [db.sql](db.sql) into your database to create the `void_blackmarkets` table.
 3.  **Config Adjustments:** Open [config.lua](config.lua) and configure item names, crafting recipes, washing speeds, and defaults to match your server's economy.
-4.  **Startup:** Add the resource to your server startup sequence:
+4.  **Turf Ownership Setup (Optional):** If using `cb-gangsystem` for turf control, configure the following in `config.lua` to automatically map market ownership to captured territories:
+    ```lua
+    Config.GangSystem = {
+        enabled = true,
+        resourceName = "cb-gangsystem"
+    }
+    ```
+5.  **Startup:** Add the resource to your server startup sequence:
     ```cfg
     ensure void_blackmarket
     ```
