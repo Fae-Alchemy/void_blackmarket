@@ -106,21 +106,14 @@ local function GetPlayerGangTag(source)
     return nil
 end
 
--- Helper to get player's gang rank from cb-gangsystem
 local function GetPlayerGangRank(source)
-    local resourceName = Config.GangSystem.resourceName or "cb-gangsystem"
-    if GetResourceState(resourceName) == "started" then
-        local okMembers, members = pcall(function()
-            return exports[resourceName]:GetGangMembers()
-        end)
-        if okMembers and members then
-            local player = Bridge.GetPlayer(source)
-            if player then
-                local pData = player.GetData()
-                local citizenID = pData.citizenid
-                if citizenID and members[citizenID] then
-                    return members[citizenID].rank
-                end
+    local gangMembers = GlobalState["GangMembers"]
+    if gangMembers then
+        local player = Bridge.GetPlayer(source)
+        if player then
+            local citizenID = player.GetData().citizenid
+            if citizenID and gangMembers[citizenID] then
+                return gangMembers[citizenID].rank
             end
         end
     end
@@ -903,6 +896,81 @@ end)
 lib.callback.register('void_blackmarket:server:GetPlayerInventory', function(source)
     return Inventory.GetPlayerInventory(source)
 end)
+
+RegisterCommand('debuggang', function(source, args, rawCommand)
+    local src = source
+    if src == 0 then return end
+    
+    local function debugOut(msg)
+        print(msg)
+        TriggerClientEvent('void_blackmarket:client:DebugGang', src, msg)
+        -- Send a shorter preview to chat
+        TriggerClientEvent('chat:addMessage', src, {
+            color = { 255, 100, 0 },
+            multiline = true,
+            args = { "void_blackmarket", msg }
+        })
+    end
+
+    local myServerId = src
+    local gangMembers = GlobalState["GangMembers"]
+    local gangData = GlobalState["GangData"]
+    
+    debugOut(("[void_blackmarket] DEBUGGANG: myServerId = %s"):format(tostring(myServerId)))
+    
+    if gangMembers then
+        debugOut("[void_blackmarket] DEBUGGANG: GangMembers state bag exists!")
+        local player = Bridge.GetPlayer(src)
+        local citizenID = player and player.GetData().citizenid
+        debugOut(("[void_blackmarket] DEBUGGANG: Player citizenID = %s"):format(tostring(citizenID)))
+        if citizenID then
+            local memberInfo = gangMembers[citizenID]
+            if memberInfo then
+                debugOut(("[void_blackmarket] DEBUGGANG: Found memberInfo for citizenID: %s"):format(json.encode(memberInfo)))
+            else
+                debugOut(("[void_blackmarket] DEBUGGANG: No memberInfo found for citizenID %s in GangMembers state bag."):format(tostring(citizenID)))
+            end
+        end
+        
+        -- Also print active keys in state bag
+        local keys = {}
+        for k, v in pairs(gangMembers) do
+            table.insert(keys, ("%s (gang_id=%s)"):format(tostring(k), tostring(v.gang_id)))
+        end
+        debugOut(("[void_blackmarket] DEBUGGANG: Active keys in GangMembers: %s"):format(table.concat(keys, ", ")))
+    else
+        debugOut("[void_blackmarket] DEBUGGANG: GangMembers state bag is NIL!")
+    end
+    
+    local resourceName = Config.GangSystem.resourceName or "cb-gangsystem"
+    if GetResourceState(resourceName) == "started" then
+        local okGang, playerGangID = pcall(function()
+            return exports[resourceName]:GetGangID(src)
+        end)
+        debugOut(("[void_blackmarket] DEBUGGANG: export GetGangID: ok = %s, value = %s"):format(tostring(okGang), tostring(playerGangID)))
+        
+        local okMembers, members = pcall(function()
+            return exports[resourceName]:GetGangMembers()
+        end)
+        debugOut(("[void_blackmarket] DEBUGGANG: export GetGangMembers: ok = %s, type = %s"):format(tostring(okMembers), type(members)))
+        if okMembers and type(members) == "table" then
+            local player = Bridge.GetPlayer(src)
+            if player then
+                local citizenID = player.GetData().citizenid
+                debugOut(("[void_blackmarket] DEBUGGANG: player citizenID = %s, memberInfo in GetGangMembers = %s"):format(
+                    tostring(citizenID), json.encode(members[citizenID])
+                ))
+            end
+        end
+        
+        local okLeader, leaderVal = pcall(function()
+            return exports[resourceName]:GetGangLeader(src)
+        end)
+        debugOut(("[void_blackmarket] DEBUGGANG: export GetGangLeader: ok = %s, value = %s"):format(tostring(okLeader), tostring(leaderVal)))
+    else
+        debugOut(("[void_blackmarket] DEBUGGANG: Resource %s is not started"):format(resourceName))
+    end
+end, false)
 
 -- Version Check Functionality
 local function CheckForUpdates()

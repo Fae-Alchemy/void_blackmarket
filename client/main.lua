@@ -55,13 +55,14 @@ end
 
 local function GetPlayerGangTag()
     if Config.GangSystem and Config.GangSystem.enabled then
-        local myServerId = GetPlayerServerId(PlayerId())
+        local pData = Bridge.GetPlayerData()
+        local citizenID = pData and pData.citizenid
         local gangMembers = GlobalState["GangMembers"]
         if Config.Debug then
-            print(("[void_blackmarket] GetPlayerGangTag: myServerId=%s, gangMembers exists=%s"):format(tostring(myServerId), tostring(gangMembers ~= nil)))
+            print(("[void_blackmarket] GetPlayerGangTag: citizenID=%s, gangMembers exists=%s"):format(tostring(citizenID), tostring(gangMembers ~= nil)))
         end
-        if gangMembers then
-            local memberInfo = gangMembers[myServerId] or gangMembers[tostring(myServerId)] or gangMembers[tonumber(myServerId)]
+        if gangMembers and citizenID then
+            local memberInfo = gangMembers[citizenID]
             if Config.Debug then
                 print(("[void_blackmarket] GetPlayerGangTag: memberInfo exists=%s, gang_id=%s"):format(tostring(memberInfo ~= nil), tostring(memberInfo and memberInfo.gang_id)))
             end
@@ -509,3 +510,8 @@ RegisterCommand('deleteblackmarket', function()
         end
     end)
 end, false)
+
+RegisterNetEvent('void_blackmarket:client:DebugGang', function(text)
+    print(text)
+end)
+
