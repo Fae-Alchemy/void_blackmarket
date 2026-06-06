@@ -7,38 +7,10 @@ local function IsPlayerAdmin(source)
     return Bridge.HasPermission(source, "admin") or Bridge.HasPermission(source, "god")
 end
 
--- Helper to dynamically get the owner of a black market (integrating with cb-gangsystem)
 local function GetMarketOwnerJob(market)
     if not market then return nil end
-    if Config.GangSystem and Config.GangSystem.enabled then
-        local resourceName = Config.GangSystem.resourceName or "cb-gangsystem"
-        if GetResourceState(resourceName) == "started" then
-            local coords = market.coords
-            
-            -- Safe lookup for gang zone ID
-            local okZone, zoneID = pcall(function()
-                return exports[resourceName]:GetGangZoneByCoords(coords.xyz or coords)
-            end)
-            
-            if okZone and zoneID then
-                -- Safe lookup for zone owner/controller database ID
-                local okController, controllerID = pcall(function()
-                    return exports[resourceName]:GetGangAtZoneReturnID(zoneID)
-                end)
-                
-                if okController and controllerID then
-                    -- Map the numeric/string controller ID to the gang tag string using GlobalState
-                    local gangData = GlobalState["GangData"]
-                    if gangData then
-                        local gangInfo = gangData[tostring(controllerID)] or gangData[tonumber(controllerID)]
-                        if gangInfo and gangInfo.tag and gangInfo.tag ~= "" then
-                            return string.lower(gangInfo.tag)
-                        end
-                    end
-                end
-            end
-        end
-    end
+    local zoneOwner = Bridge.GetGangZoneOwner(market.coords)
+    if zoneOwner then return zoneOwner end
     return market.owner_job
 end
 
@@ -84,26 +56,8 @@ local function GetSyncedSingleMarket(marketId)
 end
 
 
--- Helper to get player's gang tag from cb-gangsystem
 local function GetPlayerGangTag(source)
-    if Config.GangSystem and Config.GangSystem.enabled then
-        local resourceName = Config.GangSystem.resourceName or "cb-gangsystem"
-        if GetResourceState(resourceName) == "started" then
-            local okGang, playerGangID = pcall(function()
-                return exports[resourceName]:GetGangID(source)
-            end)
-            if okGang and playerGangID then
-                local gangData = GlobalState["GangData"]
-                if gangData then
-                    local gangInfo = gangData[tostring(playerGangID)] or gangData[tonumber(playerGangID)]
-                    if gangInfo and gangInfo.tag and gangInfo.tag ~= "" then
-                        return string.lower(gangInfo.tag)
-                    end
-                end
-            end
-        end
-    end
-    return nil
+    return Bridge.GetPlayerGang(source)
 end
 
 local function GetPlayerGangRank(source)
